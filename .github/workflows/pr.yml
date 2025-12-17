@@ -1,0 +1,52 @@
+name: PR Build and Test
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+      - name: Clippy
+        run: cargo clippy -- -D warnings
+        shell: bash
+      - name: Format
+        run: cargo fmt --all -- --check --color always
+        shell: bash
+  build:
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu }
+          - { os: macos-latest, target: x86_64-apple-darwin }
+          - { os: macos-latest, target: aarch64-apple-darwin }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc }
+    runs-on: ${{ matrix.platform.os }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+      - name: Generate Rust build for ${{ matrix.platform.target }}
+        uses: ./.github/actions/build-cli
+        with:
+          runner_os: ${{ matrix.platform.os }}
+          target_platform: ${{ matrix.platform.target }}
+          rust_toolchain: "stable"
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Setup Kubernetes
+        uses: helm/kind-action@v1.13.0
+        with:
+          cluster_name: testing-cluster
+      - name: Run tests
+        run: cargo test
+        shell: bash
