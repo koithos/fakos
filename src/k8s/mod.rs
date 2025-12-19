@@ -4,7 +4,7 @@ use kube::{Api, Client};
 use thiserror::Error;
 use tracing::{debug, error, info, instrument};
 
-/// Represents a container image running in a Kubernetes pod
+/// Represents a running Kubernetes pod
 #[derive(Debug, Clone)]
 pub struct FarosPod {
     /// Name of the pod
@@ -130,7 +130,7 @@ impl K8sClient {
         &self,
         namespace: &str,
         all_namespaces: bool,
-        node_name: Option<&str>,
+        _node_name: Option<&str>,
     ) -> Result<Api<Pod>> {
         let api = if all_namespaces {
             Api::all(self.client.clone())
