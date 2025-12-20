@@ -34,6 +34,9 @@ impl TableDisplayError {
 ///
 /// * `pods` - List of pods to display
 /// * `output_format` - Format to use for displaying the pods
+/// * `show_labels` - Whether to include labels in the output
+/// * `show_annotations` - Whether to include annotations in the output
+/// * `all_namespaces` - Whether to show namespace column (only when querying all namespaces)
 ///
 /// # Returns
 ///
@@ -41,6 +44,9 @@ impl TableDisplayError {
 pub fn display_pods(
     pods: &[FarosPod],
     output_format: &OutputFormat,
+    show_labels: bool,
+    show_annotations: bool,
+    all_namespaces: bool,
 ) -> Result<(), TableDisplayError> {
     if pods.is_empty() {
         warn!("No pods found matching criteria");
@@ -48,59 +54,50 @@ pub fn display_pods(
     }
 
     let mut table = create_table()?;
-    let header_row = create_header_row(output_format);
+    let mut header_cells = Vec::new();
+
+    if all_namespaces {
+        header_cells.push(Cell::new("NAMESPACE"));
+    }
+    header_cells.push(Cell::new("POD"));
+
+    if show_labels {
+        header_cells.push(Cell::new("LABELS"));
+    }
+
+    if show_annotations {
+        header_cells.push(Cell::new("ANNOTATIONS"));
+    }
+
+    if matches!(output_format, OutputFormat::Wide) {
+        header_cells.push(Cell::new("NODE"));
+    }
+
+    let header_row = Row::new(header_cells);
     table.add_row(header_row);
 
     for pod in pods {
-        let row =
-            create_pod_row(pod, output_format).map_err(|e| TableDisplayError::new(&e.message))?;
-        table.add_row(row);
-    }
+        let mut row_cells = Vec::new();
 
-    table.printstd();
-    Ok(())
-}
+        if all_namespaces {
+            row_cells.push(Cell::new(&pod.namespace));
+        }
+        row_cells.push(Cell::new(&pod.name));
 
-/// Display only labels for pods in a formatted table
-///
-/// # Arguments
-///
-/// * `pods` - List of pods to display labels for
-///
-/// # Returns
-///
-/// * `Result<()>` - Success or error
-pub fn display_pod_labels(pods: &[FarosPod]) -> Result<(), TableDisplayError> {
-    if pods.is_empty() {
-        warn!("No pods found matching criteria");
-        return Ok(());
-    }
+        if show_labels {
+            row_cells.push(Cell::new(&format_metadata(&pod.labels)));
+        }
 
-    let mut table = create_table()?;
-    let header_row = Row::new(vec![
-        Cell::new("POD"),
-        Cell::new("NAMESPACE"),
-        Cell::new("LABELS"),
-    ]);
-    table.add_row(header_row);
+        if show_annotations {
+            row_cells.push(Cell::new(&format_metadata(&pod.annotations)));
+        }
 
-    for pod in pods {
-        let labels_str = if pod.labels.is_empty() {
-            "<none>".to_string()
-        } else {
-            pod.labels
-                .iter()
-                .map(|(k, v)| format!("{}={}", k, v))
-                .collect::<Vec<_>>()
-                .join("\n")
-        };
+        if matches!(output_format, OutputFormat::Wide) {
+            let node_display = pod.node.as_deref().unwrap_or("<none>");
+            row_cells.push(Cell::new(node_display));
+        }
 
-        let row = Row::new(vec![
-            Cell::new(&pod.name),
-            Cell::new(&pod.namespace),
-            Cell::new(&labels_str),
-        ]);
-        table.add_row(row);
+        table.add_row(Row::new(row_cells));
     }
 
     table.printstd();
@@ -127,37 +124,13 @@ fn create_table() -> Result<Table, TableDisplayError> {
     Ok(table)
 }
 
-/// Create a header row for the table based on output format for pods
-///
-/// # Arguments
-///
-/// * `output_format` - Format to use for displaying the pods
-///
-/// # Returns
-///
-/// * `Row` - A row containing the table headers
-fn create_header_row(output_format: &OutputFormat) -> Row {
-    let mut header_cells = vec![Cell::new("POD"), Cell::new("NAMESPACE")];
-
-    if matches!(output_format, OutputFormat::Wide) {
-        header_cells.extend_from_slice(&[Cell::new("NODE")]);
+fn format_metadata(map: &std::collections::BTreeMap<String, String>) -> String {
+    if map.is_empty() {
+        "<none>".to_string()
+    } else {
+        map.iter()
+            .map(|(k, v)| format!("{}={}", k, v))
+            .collect::<Vec<_>>()
+            .join("\n")
     }
-
-    Row::new(header_cells)
-}
-
-/// Create a row for a single pod
-///
-/// # Arguments
-///
-/// * `pod` - The pod to create a row for
-/// * `_output_format` - Format to use for displaying the pod (currently unused but kept for API compatibility)
-///
-/// # Returns
-///
-/// * `Result<Row>` - A row containing the pod information or error
-fn create_pod_row(pod: &FarosPod, _output_format: &OutputFormat) -> Result<Row, TableDisplayError> {
-    let cells = vec![Cell::new(&pod.name), Cell::new(&pod.namespace)];
-
-    Ok(Row::new(cells))
 }

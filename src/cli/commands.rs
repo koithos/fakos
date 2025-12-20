@@ -47,6 +47,10 @@ pub enum GetPods {
         #[arg(long = "labels")]
         labels: bool,
 
+        /// Display annotations attached to the pods
+        #[arg(long = "annotations")]
+        annotations: bool,
+
         /// Path to kubeconfig file (default: ~/.kube/config)
         #[arg(long = "kubeconfig")]
         kubeconfig: Option<PathBuf>,

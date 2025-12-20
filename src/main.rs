@@ -1,8 +1,6 @@
 use anyhow::Context;
 use clap::Parser;
-use fakos::{
-    Args, Commands, FakosResult, GetPods, K8sClient, display_pod_labels, display_pods, logging,
-};
+use fakos::{Args, Commands, FakosResult, GetPods, K8sClient, display_pods, logging};
 use tracing::{debug, info, instrument};
 
 /// Main entry point for the fakos application
@@ -41,6 +39,7 @@ async fn process_commands(args: Args, client: K8sClient) -> FakosResult<()> {
                 all_namespaces,
                 output,
                 labels,
+                annotations,
                 ..
             } => {
                 debug!(
@@ -50,6 +49,7 @@ async fn process_commands(args: Args, client: K8sClient) -> FakosResult<()> {
                     all_namespaces = %all_namespaces,
                     output = ?output,
                     labels = %labels,
+                    annotations = %annotations,
                     "Processing..."
                 );
 
@@ -63,11 +63,7 @@ async fn process_commands(args: Args, client: K8sClient) -> FakosResult<()> {
                     .await
                     .context("Failed to get pods")?;
 
-                if labels {
-                    display_pod_labels(&pods)?;
-                } else {
-                    display_pods(&pods, &output)?;
-                }
+                display_pods(&pods, &output, labels, annotations, all_namespaces)?;
             }
         },
     }

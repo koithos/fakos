@@ -12,8 +12,12 @@ pub struct FarosPod {
     pub name: String,
     /// Kubernetes namespace of the pod
     pub namespace: String,
+    /// Node name where the pod is running
+    pub node: Option<String>,
     /// Labels attached to the pod
     pub labels: std::collections::BTreeMap<String, String>,
+    /// Annotations attached to the pod
+    pub annotations: std::collections::BTreeMap<String, String>,
 }
 
 /// Errors that can occur when interacting with Kubernetes
@@ -190,13 +194,23 @@ impl K8sClient {
                     .unwrap_or_default()
                     .to_string();
 
+                // Extract node name
+                let node = pod
+                    .spec
+                    .as_ref()
+                    .and_then(|spec| spec.node_name.as_ref())
+                    .cloned();
+
                 // Extract labels
                 let labels = pod.metadata.labels.unwrap_or_default();
+                let annotations = pod.metadata.annotations.unwrap_or_default();
 
                 Some(FarosPod {
                     name,
                     namespace: pod_namespace,
+                    node,
                     labels,
+                    annotations,
                 })
             })
             .collect();
