@@ -69,7 +69,7 @@ pub fn display_pods(
         header_cells.push(Cell::new("ANNOTATIONS"));
     }
 
-    if !show_labels && !show_annotations && matches!(output_format, OutputFormat::Wide) {
+    if matches!(output_format, OutputFormat::Wide) {
         header_cells.push(Cell::new("NODE"));
     }
 
@@ -92,8 +92,9 @@ pub fn display_pods(
             row_cells.push(Cell::new(&format_metadata(&pod.annotations)));
         }
 
-        if !show_labels && !show_annotations && matches!(output_format, OutputFormat::Wide) {
-            row_cells.push(Cell::new(""));
+        if matches!(output_format, OutputFormat::Wide) {
+            let node_display = pod.node.as_deref().unwrap_or("<none>");
+            row_cells.push(Cell::new(node_display));
         }
 
         table.add_row(Row::new(row_cells));
