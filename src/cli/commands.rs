@@ -18,6 +18,10 @@ pub enum Commands {
 pub enum GetPods {
     /// List pods
     Pods {
+        /// Pod name to filter by (if not specified, all pods in the namespace are shown)
+        #[arg(value_name = "POD")]
+        pod_name: Option<String>,
+
         /// Kubernetes namespace to query (defaults to "default", ignored when --node is specified)
         #[arg(
             short,
@@ -31,10 +35,6 @@ pub enum GetPods {
         #[arg(short = 'N', long = "node", conflicts_with = "all_namespaces")]
         node: Option<String>,
 
-        /// Filter pods by pod name
-        #[arg(short, long)]
-        pod: Option<String>,
-
         /// Query pods across all namespaces
         #[arg(short = 'A', long = "all-namespaces", conflicts_with = "namespace")]
         all_namespaces: bool,
@@ -42,6 +42,10 @@ pub enum GetPods {
         /// Output format (default: normal, wide: shows additional columns)
         #[arg(short = 'o', long = "output", default_value = "normal")]
         output: OutputFormat,
+
+        /// Display only labels attached to the pods
+        #[arg(long = "labels")]
+        labels: bool,
 
         /// Path to kubeconfig file (default: ~/.kube/config)
         #[arg(long = "kubeconfig")]
