@@ -1,7 +1,8 @@
 use anyhow::Context;
 use clap::Parser;
-use fakos::{Args, Commands, FakosResult, FarosPod, GetPods, K8sClient, display_pods, logging};
-use kube::api::ListParams;
+use fakos::{
+    Args, Commands, FakosResult, GetPods, K8sClient, display_pod_labels, display_pods, logging,
+};
 use tracing::{debug, info, instrument};
 
 /// Main entry point for the fakos application
@@ -39,6 +40,7 @@ async fn process_commands(args: Args, client: K8sClient) -> FakosResult<()> {
                 pod,
                 all_namespaces,
                 output,
+                labels,
                 ..
             } => {
                 debug!(
@@ -47,24 +49,20 @@ async fn process_commands(args: Args, client: K8sClient) -> FakosResult<()> {
                     pod = ?pod,
                     all_namespaces = %all_namespaces,
                     output = ?output,
+                    labels = %labels,
                     "Processing..."
                 );
 
-                let api = client
-                    .get_pods_api(&namespace, all_namespaces, node.as_deref())
-                    .context("Failed to get pods API")?;
-                let pods: Vec<FarosPod> = api
-                    .list(&ListParams::default())
-                    .await?
-                    .items
-                    .into_iter()
-                    .map(|pod| FarosPod {
-                        name: pod.metadata.name.unwrap_or_default(),
-                        namespace: pod.metadata.namespace.unwrap_or_default(),
-                    })
-                    .collect();
+                let pods = client
+                    .get_pods(&namespace, all_namespaces, node.as_deref(), pod.as_deref())
+                    .await
+                    .context("Failed to get pods")?;
 
-                display_pods(&pods, &output)?;
+                if labels {
+                    display_pod_labels(&pods)?;
+                } else {
+                    display_pods(&pods, &output)?;
+                }
             }
         },
     }

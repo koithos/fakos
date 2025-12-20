@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use k8s_openapi::api::core::v1::Pod;
+use kube::api::ListParams;
 use kube::{Api, Client};
 use thiserror::Error;
 use tracing::{debug, error, info, instrument};
@@ -11,6 +12,8 @@ pub struct FarosPod {
     pub name: String,
     /// Kubernetes namespace of the pod
     pub namespace: String,
+    /// Labels attached to the pod
+    pub labels: std::collections::BTreeMap<String, String>,
 }
 
 /// Errors that can occur when interacting with Kubernetes
@@ -125,19 +128,79 @@ impl K8sClient {
         }
     }
 
-    /// Get the pods API for the specified namespace
-    pub fn get_pods_api(
+    /// Get pods that match the specified filters
+    ///
+    /// # Arguments
+    ///
+    /// * `namespace` - The namespace to query (ignored if `all_namespaces` is true)
+    /// * `all_namespaces` - If true, query pods across all namespaces
+    /// * `node_name` - Optional filter by node name
+    /// * `pod_name` - Optional filter by pod name
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Vec<FarosPod>>` - A list of pods matching the filters
+    #[instrument(skip(self), level = "debug")]
+    pub async fn get_pods(
         &self,
         namespace: &str,
         all_namespaces: bool,
-        _node_name: Option<&str>,
-    ) -> Result<Api<Pod>> {
+        node_name: Option<&str>,
+        pod_name: Option<&str>,
+    ) -> Result<Vec<FarosPod>> {
         let api = if all_namespaces {
             Api::all(self.client.clone())
         } else {
             Api::namespaced(self.client.clone(), namespace)
         };
 
-        Ok(api)
+        let pod_list = api
+            .list(&ListParams::default())
+            .await
+            .context("Failed to list pods from Kubernetes API")?;
+
+        let pods: Vec<FarosPod> = pod_list
+            .items
+            .into_iter()
+            .filter_map(|pod: Pod| {
+                // Filter by node name if specified
+                if let Some(node) = node_name {
+                    let pod_node_name =
+                        pod.spec.as_ref().and_then(|spec| spec.node_name.as_deref());
+                    if pod_node_name != Some(node) {
+                        return None;
+                    }
+                }
+
+                // Filter by pod name if specified
+                if let Some(name) = pod_name
+                    && pod.metadata.name.as_deref() != Some(name)
+                {
+                    return None;
+                }
+
+                // Extract pod name
+                let name = pod.metadata.name.as_deref().unwrap_or_default().to_string();
+
+                // Extract namespace
+                let pod_namespace = pod
+                    .metadata
+                    .namespace
+                    .as_deref()
+                    .unwrap_or_default()
+                    .to_string();
+
+                // Extract labels
+                let labels = pod.metadata.labels.unwrap_or_default();
+
+                Some(FarosPod {
+                    name,
+                    namespace: pod_namespace,
+                    labels,
+                })
+            })
+            .collect();
+
+        Ok(pods)
     }
 }

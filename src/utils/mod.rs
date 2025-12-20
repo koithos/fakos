@@ -61,6 +61,52 @@ pub fn display_pods(
     Ok(())
 }
 
+/// Display only labels for pods in a formatted table
+///
+/// # Arguments
+///
+/// * `pods` - List of pods to display labels for
+///
+/// # Returns
+///
+/// * `Result<()>` - Success or error
+pub fn display_pod_labels(pods: &[FarosPod]) -> Result<(), TableDisplayError> {
+    if pods.is_empty() {
+        warn!("No pods found matching criteria");
+        return Ok(());
+    }
+
+    let mut table = create_table()?;
+    let header_row = Row::new(vec![
+        Cell::new("POD"),
+        Cell::new("NAMESPACE"),
+        Cell::new("LABELS"),
+    ]);
+    table.add_row(header_row);
+
+    for pod in pods {
+        let labels_str = if pod.labels.is_empty() {
+            "<none>".to_string()
+        } else {
+            pod.labels
+                .iter()
+                .map(|(k, v)| format!("{}={}", k, v))
+                .collect::<Vec<_>>()
+                .join("\n")
+        };
+
+        let row = Row::new(vec![
+            Cell::new(&pod.name),
+            Cell::new(&pod.namespace),
+            Cell::new(&labels_str),
+        ]);
+        table.add_row(row);
+    }
+
+    table.printstd();
+    Ok(())
+}
+
 /// Create a new table with default formatting
 ///
 /// # Returns
@@ -105,12 +151,12 @@ fn create_header_row(output_format: &OutputFormat) -> Row {
 /// # Arguments
 ///
 /// * `pod` - The pod to create a row for
-/// * `output_format` - Format to use for displaying the pod
+/// * `_output_format` - Format to use for displaying the pod (currently unused but kept for API compatibility)
 ///
 /// # Returns
 ///
 /// * `Result<Row>` - A row containing the pod information or error
-fn create_pod_row(pod: &FarosPod, output_format: &OutputFormat) -> Result<Row, TableDisplayError> {
+fn create_pod_row(pod: &FarosPod, _output_format: &OutputFormat) -> Result<Row, TableDisplayError> {
     let cells = vec![Cell::new(&pod.name), Cell::new(&pod.namespace)];
 
     Ok(Row::new(cells))

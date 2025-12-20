@@ -43,6 +43,10 @@ pub enum GetPods {
         #[arg(short = 'o', long = "output", default_value = "normal")]
         output: OutputFormat,
 
+        /// Display only labels attached to the pods
+        #[arg(long = "labels")]
+        labels: bool,
+
         /// Path to kubeconfig file (default: ~/.kube/config)
         #[arg(long = "kubeconfig")]
         kubeconfig: Option<PathBuf>,
