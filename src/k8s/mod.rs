@@ -44,35 +44,6 @@ pub struct K8sClient {
 }
 
 impl K8sClient {
-    /// Create a new Kubernetes client
-    ///
-    /// # Returns
-    ///
-    /// * `Result<Self>` - A new K8sClient instance or an error if initialization fails
-    #[instrument(skip_all)]
-    pub async fn new() -> Result<Self> {
-        debug!("Initializing Kubernetes client");
-
-        let kubeconfig_path = Self::get_kubeconfig_path()?;
-        debug!(path = %kubeconfig_path, "Using kubeconfig path");
-
-        let client = Client::try_default()
-            .await
-            .context("Failed to create Kubernetes client")?;
-
-        let k8s_client = Self { client };
-
-        // Verify cluster accessibility
-        if !k8s_client.is_accessible().await? {
-            return Err(
-                K8sError::ConnectionError("Kubernetes cluster is not accessible".into()).into(),
-            );
-        }
-
-        info!("Successfully initialized Kubernetes client");
-        Ok(k8s_client)
-    }
-
     /// Get the path to the kubeconfig file
     ///
     /// # Returns
@@ -96,40 +67,6 @@ impl K8sClient {
 
         info!("Using default kubeconfig location");
         Ok(default_kubeconfig)
-    }
-
-    /// Check if the Kubernetes cluster is accessible
-    ///
-    /// # Returns
-    ///
-    /// * `Result<bool>` - True if the cluster is accessible, false otherwise
-    #[instrument(skip(self))]
-    pub async fn is_accessible(&self) -> Result<bool> {
-        debug!("Checking cluster accessibility");
-        let api: Api<Pod> = Api::namespaced(self.client.clone(), "default");
-
-        match api.list(&Default::default()).await {
-            Ok(_) => {
-                debug!("Successfully connected to cluster");
-                Ok(true)
-            }
-            Err(e) => match e {
-                kube::Error::Api(api_err) => {
-                    error!("Kubernetes API error occurred");
-                    Err(
-                        K8sError::ApiError(format!("{} ({})", api_err.message, api_err.reason))
-                            .into(),
-                    )
-                }
-                _ => {
-                    error!("Failed to connect to Kubernetes cluster");
-                    Err(
-                        K8sError::ConnectionError("Failed to connect to Kubernetes cluster".into())
-                            .into(),
-                    )
-                }
-            },
-        }
     }
 
     /// Get pods that match the specified filters
@@ -158,8 +95,14 @@ impl K8sClient {
             Api::namespaced(self.client.clone(), namespace)
         };
 
+        // Build field selector for better performance with large datasets
+        let mut list_params = ListParams::default();
+        if let Some(node) = node_name {
+            list_params = list_params.fields(&format!("spec.nodeName={}", node));
+        }
+
         let pod_list = api
-            .list(&ListParams::default())
+            .list(&list_params)
             .await
             .context("Failed to list pods from Kubernetes API")?;
 
@@ -167,16 +110,7 @@ impl K8sClient {
             .items
             .into_iter()
             .filter_map(|pod: Pod| {
-                // Filter by node name if specified
-                if let Some(node) = node_name {
-                    let pod_node_name =
-                        pod.spec.as_ref().and_then(|spec| spec.node_name.as_deref());
-                    if pod_node_name != Some(node) {
-                        return None;
-                    }
-                }
-
-                // Filter by pod name if specified
+                // Filter by pod name if specified (field selector doesn't support pod name)
                 if let Some(name) = pod_name
                     && pod.metadata.name.as_deref() != Some(name)
                 {
@@ -216,5 +150,68 @@ impl K8sClient {
             .collect();
 
         Ok(pods)
+    }
+
+    /// Check if the Kubernetes cluster is accessible
+    ///
+    /// # Returns
+    ///
+    /// * `Result<bool>` - True if the cluster is accessible, false otherwise
+    #[instrument(skip(self))]
+    pub async fn is_accessible(&self) -> Result<bool> {
+        debug!("Checking cluster accessibility");
+        let api: Api<Pod> = Api::namespaced(self.client.clone(), "default");
+
+        match api.list(&Default::default()).await {
+            Ok(_) => {
+                debug!("Successfully connected to cluster");
+                Ok(true)
+            }
+            Err(e) => match e {
+                kube::Error::Api(api_err) => {
+                    error!("Kubernetes API error occurred");
+                    Err(
+                        K8sError::ApiError(format!("{} ({})", api_err.message, api_err.reason))
+                            .into(),
+                    )
+                }
+                _ => {
+                    error!("Failed to connect to Kubernetes cluster");
+                    Err(
+                        K8sError::ConnectionError("Failed to connect to Kubernetes cluster".into())
+                            .into(),
+                    )
+                }
+            },
+        }
+    }
+
+    /// Create a new Kubernetes client
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Self>` - A new K8sClient instance or an error if initialization fails
+    #[instrument(skip_all)]
+    pub async fn new() -> Result<Self> {
+        debug!("Initializing Kubernetes client");
+
+        let kubeconfig_path = Self::get_kubeconfig_path()?;
+        debug!(path = %kubeconfig_path, "Using kubeconfig path");
+
+        let client = Client::try_default()
+            .await
+            .context("Failed to create Kubernetes client")?;
+
+        let k8s_client = Self { client };
+
+        // Verify cluster accessibility
+        if !k8s_client.is_accessible().await? {
+            return Err(
+                K8sError::ConnectionError("Kubernetes cluster is not accessible".into()).into(),
+            );
+        }
+
+        info!("Successfully initialized Kubernetes client");
+        Ok(k8s_client)
     }
 }

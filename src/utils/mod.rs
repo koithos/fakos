@@ -128,9 +128,15 @@ fn format_metadata(map: &std::collections::BTreeMap<String, String>) -> String {
     if map.is_empty() {
         "<none>".to_string()
     } else {
-        map.iter()
-            .map(|(k, v)| format!("{}={}", k, v))
-            .collect::<Vec<_>>()
-            .join("\n")
+        // Use fold to build string efficiently without intermediate Vec allocation
+        map.iter().fold(String::new(), |mut acc, (k, v)| {
+            if !acc.is_empty() {
+                acc.push('\n');
+            }
+            acc.push_str(k);
+            acc.push('=');
+            acc.push_str(v);
+            acc
+        })
     }
 }

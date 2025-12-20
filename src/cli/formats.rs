@@ -38,24 +38,6 @@ impl fmt::Display for OutputFormat {
 }
 
 impl OutputFormat {
-    /// Check if this format includes registry information
-    ///
-    /// # Returns
-    ///
-    /// * `bool` - True if the format includes registry information
-    pub fn includes_registry(&self) -> bool {
-        matches!(self, OutputFormat::Wide)
-    }
-
-    /// Check if this format includes digest information
-    ///
-    /// # Returns
-    ///
-    /// * `bool` - True if the format includes digest information
-    pub fn includes_digest(&self) -> bool {
-        matches!(self, OutputFormat::Wide)
-    }
-
     /// Check if this format includes node information
     ///
     /// # Returns
