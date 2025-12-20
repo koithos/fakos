@@ -36,6 +36,7 @@ impl TableDisplayError {
 /// * `output_format` - Format to use for displaying the pods
 /// * `show_labels` - Whether to include labels in the output
 /// * `show_annotations` - Whether to include annotations in the output
+/// * `all_namespaces` - Whether to show namespace column (only when querying all namespaces)
 ///
 /// # Returns
 ///
@@ -45,6 +46,7 @@ pub fn display_pods(
     output_format: &OutputFormat,
     show_labels: bool,
     show_annotations: bool,
+    all_namespaces: bool,
 ) -> Result<(), TableDisplayError> {
     if pods.is_empty() {
         warn!("No pods found matching criteria");
@@ -52,7 +54,12 @@ pub fn display_pods(
     }
 
     let mut table = create_table()?;
-    let mut header_cells = vec![Cell::new("POD"), Cell::new("NAMESPACE")];
+    let mut header_cells = Vec::new();
+
+    if all_namespaces {
+        header_cells.push(Cell::new("NAMESPACE"));
+    }
+    header_cells.push(Cell::new("POD"));
 
     if show_labels {
         header_cells.push(Cell::new("LABELS"));
@@ -70,7 +77,12 @@ pub fn display_pods(
     table.add_row(header_row);
 
     for pod in pods {
-        let mut row_cells = vec![Cell::new(&pod.name), Cell::new(&pod.namespace)];
+        let mut row_cells = Vec::new();
+
+        if all_namespaces {
+            row_cells.push(Cell::new(&pod.namespace));
+        }
+        row_cells.push(Cell::new(&pod.name));
 
         if show_labels {
             row_cells.push(Cell::new(&format_metadata(&pod.labels)));

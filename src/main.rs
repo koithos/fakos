@@ -63,7 +63,7 @@ async fn process_commands(args: Args, client: K8sClient) -> FakosResult<()> {
                     .await
                     .context("Failed to get pods")?;
 
-                display_pods(&pods, &output, labels, annotations)?;
+                display_pods(&pods, &output, labels, annotations, all_namespaces)?;
             }
         },
     }
