@@ -1,7 +1,7 @@
 use anyhow::Context;
 use clap::Parser;
 use fakos::{Args, Commands, FakosResult, GetPods, K8sClient, display_pods, logging};
-use tracing::{debug, info, instrument};
+use tracing::{debug, info, instrument, warn};
 
 /// Main entry point for the fakos application
 #[tokio::main]
@@ -42,6 +42,15 @@ async fn process_commands(args: Args, client: K8sClient) -> FakosResult<()> {
                 annotations,
                 ..
             } => {
+                if let Some(ref pod) = pod_name
+                    && all_namespaces
+                {
+                    warn!(
+                        pod = %pod,
+                        "Warning: Pod name specified with --all-namespaces flag. Pod names are unique within a namespace, so searching across all namespaces may be inefficient."
+                    );
+                }
+
                 debug!(
                     namespace = %namespace,
                     node = ?node,
