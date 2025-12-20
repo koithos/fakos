@@ -37,7 +37,7 @@ async fn process_commands(args: Args, client: K8sClient) -> FakosResult<()> {
             GetPods::Pods {
                 namespace,
                 node,
-                pod,
+                pod_name,
                 all_namespaces,
                 output,
                 labels,
@@ -46,7 +46,7 @@ async fn process_commands(args: Args, client: K8sClient) -> FakosResult<()> {
                 debug!(
                     namespace = %namespace,
                     node = ?node,
-                    pod = ?pod,
+                    pod = ?pod_name,
                     all_namespaces = %all_namespaces,
                     output = ?output,
                     labels = %labels,
@@ -54,7 +54,12 @@ async fn process_commands(args: Args, client: K8sClient) -> FakosResult<()> {
                 );
 
                 let pods = client
-                    .get_pods(&namespace, all_namespaces, node.as_deref(), pod.as_deref())
+                    .get_pods(
+                        &namespace,
+                        all_namespaces,
+                        node.as_deref(),
+                        pod_name.as_deref(),
+                    )
                     .await
                     .context("Failed to get pods")?;
 
