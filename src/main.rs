@@ -41,6 +41,7 @@ async fn process_commands(args: Args, client: K8sClient) -> FakosResult<()> {
                 all_namespaces,
                 output,
                 labels,
+                annotations,
                 ..
             } => {
                 debug!(
@@ -50,6 +51,7 @@ async fn process_commands(args: Args, client: K8sClient) -> FakosResult<()> {
                     all_namespaces = %all_namespaces,
                     output = ?output,
                     labels = %labels,
+                    annotations = %annotations,
                     "Processing..."
                 );
 
@@ -63,8 +65,8 @@ async fn process_commands(args: Args, client: K8sClient) -> FakosResult<()> {
                     .await
                     .context("Failed to get pods")?;
 
-                if labels {
-                    display_pod_labels(&pods)?;
+                if labels || annotations {
+                    display_pod_labels(&pods, labels, annotations)?;
                 } else {
                     display_pods(&pods, &output)?;
                 }

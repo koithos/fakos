@@ -61,46 +61,53 @@ pub fn display_pods(
     Ok(())
 }
 
-/// Display only labels for pods in a formatted table
+/// Display pod metadata (labels and/or annotations) in a formatted table
 ///
 /// # Arguments
 ///
 /// * `pods` - List of pods to display labels for
+/// * `show_labels` - Whether to include labels in the output
+/// * `show_annotations` - Whether to include annotations in the output
 ///
 /// # Returns
 ///
 /// * `Result<()>` - Success or error
-pub fn display_pod_labels(pods: &[FarosPod]) -> Result<(), TableDisplayError> {
+pub fn display_pod_labels(
+    pods: &[FarosPod],
+    show_labels: bool,
+    show_annotations: bool,
+) -> Result<(), TableDisplayError> {
     if pods.is_empty() {
         warn!("No pods found matching criteria");
         return Ok(());
     }
 
     let mut table = create_table()?;
-    let header_row = Row::new(vec![
-        Cell::new("POD"),
-        Cell::new("NAMESPACE"),
-        Cell::new("LABELS"),
-    ]);
+    let mut header_cells = vec![Cell::new("POD"), Cell::new("NAMESPACE")];
+
+    if show_labels {
+        header_cells.push(Cell::new("LABELS"));
+    }
+
+    if show_annotations {
+        header_cells.push(Cell::new("ANNOTATIONS"));
+    }
+
+    let header_row = Row::new(header_cells);
     table.add_row(header_row);
 
     for pod in pods {
-        let labels_str = if pod.labels.is_empty() {
-            "<none>".to_string()
-        } else {
-            pod.labels
-                .iter()
-                .map(|(k, v)| format!("{}={}", k, v))
-                .collect::<Vec<_>>()
-                .join("\n")
-        };
+        let mut row_cells = vec![Cell::new(&pod.name), Cell::new(&pod.namespace)];
 
-        let row = Row::new(vec![
-            Cell::new(&pod.name),
-            Cell::new(&pod.namespace),
-            Cell::new(&labels_str),
-        ]);
-        table.add_row(row);
+        if show_labels {
+            row_cells.push(Cell::new(&format_metadata(&pod.labels)));
+        }
+
+        if show_annotations {
+            row_cells.push(Cell::new(&format_metadata(&pod.annotations)));
+        }
+
+        table.add_row(Row::new(row_cells));
     }
 
     table.printstd();
@@ -160,4 +167,15 @@ fn create_pod_row(pod: &FarosPod, _output_format: &OutputFormat) -> Result<Row, 
     let cells = vec![Cell::new(&pod.name), Cell::new(&pod.namespace)];
 
     Ok(Row::new(cells))
+}
+
+fn format_metadata(map: &std::collections::BTreeMap<String, String>) -> String {
+    if map.is_empty() {
+        "<none>".to_string()
+    } else {
+        map.iter()
+            .map(|(k, v)| format!("{}={}", k, v))
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
 }
