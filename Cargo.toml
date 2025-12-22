@@ -1,6 +1,6 @@
 [package]
 name = "fakos"
-version = "0.0.1"
+version = "0.0.2"
 authors = ["Ali Abbas Jaffri <ali.abbasjaffri@live.com>"]
 description = "fakos enables users to efficiently access the state and metadata of all Kubernetes resources"
 keywords = ["k8s", "pods", "nodes", "state", "metadata"]
