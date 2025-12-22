@@ -4,8 +4,10 @@ fakos (φακός; greek for lens) enables users to efficiently access the state
 
 This cli utility can:
 
-- [ ] Get pods / nodes labels and annotations
+- [x] Get pod labels and annotations
+- [ ] Get node labels and annotations
 - [ ] Get envs on pods
+- [ ] Get pods by node
 - [ ] Get coloured logs for different pods if getting logs by pod label
 - [ ] Get Node health and metrics
 - [ ] Get GPU state
