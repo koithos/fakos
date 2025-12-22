@@ -151,6 +151,7 @@ fn format_metadata(map: &std::collections::BTreeMap<String, String>) -> String {
 /// * `nodes` - List of nodes to display
 /// * `output_format` - Format to use for displaying the nodes
 /// * `show_labels` - Whether to include labels in the output
+/// * `show_annotations` - Whether to include annotations in the output
 ///
 /// # Returns
 ///
@@ -159,6 +160,7 @@ pub fn display_nodes(
     nodes: &[FarosNode],
     _output_format: &OutputFormat,
     show_labels: bool,
+    show_annotations: bool,
 ) -> Result<(), TableDisplayError> {
     if nodes.is_empty() {
         warn!("No nodes found matching criteria");
@@ -175,6 +177,10 @@ pub fn display_nodes(
         header_cells.push(Cell::new("LABELS"));
     }
 
+    if show_annotations {
+        header_cells.push(Cell::new("ANNOTATIONS"));
+    }
+
     let header_row = Row::new(header_cells);
     table.add_row(header_row);
 
@@ -186,6 +192,10 @@ pub fn display_nodes(
 
         if show_labels {
             row_cells.push(Cell::new(&format_metadata(&node.labels)));
+        }
+
+        if show_annotations {
+            row_cells.push(Cell::new(&format_metadata(&node.annotations)));
         }
 
         table.add_row(Row::new(row_cells));

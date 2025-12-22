@@ -80,12 +80,14 @@ async fn process_commands(args: Args, client: K8sClient) -> FakosResult<()> {
                 node_name,
                 output,
                 labels,
+                annotations,
                 ..
             } => {
                 debug!(
                     node = ?node_name,
                     output = ?output,
                     labels = %labels,
+                    annotations = %annotations,
                     "Processing..."
                 );
 
@@ -94,7 +96,7 @@ async fn process_commands(args: Args, client: K8sClient) -> FakosResult<()> {
                     .await
                     .context("Failed to get nodes")?;
 
-                display_nodes(&nodes, &output, labels)?;
+                display_nodes(&nodes, &output, labels, annotations)?;
             }
         },
     }

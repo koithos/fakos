@@ -27,6 +27,8 @@ pub struct FarosNode {
     pub name: String,
     /// Labels attached to the node
     pub labels: std::collections::BTreeMap<String, String>,
+    /// Annotations attached to the node
+    pub annotations: std::collections::BTreeMap<String, String>,
     /// Status of the node (Ready, NotReady, etc.)
     pub status: String,
 }
@@ -203,6 +205,7 @@ impl K8sClient {
 
                 // Extract labels
                 let labels = node.metadata.labels.unwrap_or_default();
+                let annotations = node.metadata.annotations.unwrap_or_default();
 
                 // Extract status
                 let status = node
@@ -223,6 +226,7 @@ impl K8sClient {
                 Some(FarosNode {
                     name,
                     labels,
+                    annotations,
                     status,
                 })
             })
