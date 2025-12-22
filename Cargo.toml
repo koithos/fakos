@@ -3,7 +3,7 @@ name = "fakos"
 version = "0.0.1"
 authors = ["Ali Abbas Jaffri <ali.abbasjaffri@live.com>"]
 description = "fakos enables users to efficiently access the state and metadata of all Kubernetes resources"
-keywords = ["k8s", "pods", "nodes", "daemonsets", "deployments", "state", "metadata"]
+keywords = ["k8s", "pods", "nodes", "state", "metadata"]
 repository = "https://github.com/koithos/fakos"
 categories = ["command-line-utilities"]
 license = "MIT OR Apache-2.0"
@@ -25,3 +25,10 @@ thiserror = "2.0"
 [dev-dependencies]
 tokio-test = "0.4"
 mockall = "0.14"
+
+[profile.release]
+opt-level = "z"        # or "s" (slightly faster, slightly larger)
+lto = true             # link-time optimization
+codegen-units = 1      # better optimization across crate boundaries
+panic = "abort"        # removes unwinding machinery
+strip = true
