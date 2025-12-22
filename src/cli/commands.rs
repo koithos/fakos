@@ -9,13 +9,13 @@ pub enum Commands {
     Get {
         /// The resource type to query
         #[command(subcommand)]
-        resource: GetPods,
+        resource: GetResources,
     },
 }
 
 /// Resource types that can be queried in the Kubernetes cluster
 #[derive(Subcommand, Debug)]
-pub enum GetPods {
+pub enum GetResources {
     /// List pods
     Pods {
         /// Pod name to filter by (if not specified, all pods in the namespace are shown)
@@ -55,9 +55,28 @@ pub enum GetPods {
         #[arg(long = "kubeconfig")]
         kubeconfig: Option<PathBuf>,
     },
+
+    /// List nodes
+    Nodes {
+        /// Node name to filter by (if not specified, all nodes are shown)
+        #[arg(value_name = "NODE")]
+        node_name: Option<String>,
+
+        /// Output format (default: normal, wide: shows additional columns)
+        #[arg(short = 'o', long = "output", default_value = "normal")]
+        output: OutputFormat,
+
+        /// Display only labels attached to the nodes
+        #[arg(long = "labels")]
+        labels: bool,
+
+        /// Path to kubeconfig file (default: ~/.kube/config)
+        #[arg(long = "kubeconfig")]
+        kubeconfig: Option<PathBuf>,
+    },
 }
 
-impl GetPods {
+impl GetResources {
     /// Get the kubeconfig path for this command
     ///
     /// # Returns
@@ -65,7 +84,8 @@ impl GetPods {
     /// * `Option<PathBuf>` - The path to the kubeconfig file if specified
     pub fn get_kubeconfig_path(&self) -> Option<PathBuf> {
         match self {
-            GetPods::Pods { kubeconfig, .. } => kubeconfig.clone(),
+            GetResources::Pods { kubeconfig, .. } => kubeconfig.clone(),
+            GetResources::Nodes { kubeconfig, .. } => kubeconfig.clone(),
         }
     }
 
@@ -76,7 +96,8 @@ impl GetPods {
     /// * `&str` - The namespace to query
     pub fn get_namespace(&self) -> &str {
         match self {
-            GetPods::Pods { namespace, .. } => namespace,
+            GetResources::Pods { namespace, .. } => namespace,
+            GetResources::Nodes { .. } => "default",
         }
     }
 
@@ -87,7 +108,8 @@ impl GetPods {
     /// * `bool` - True if all namespaces should be queried
     pub fn is_all_namespaces(&self) -> bool {
         match self {
-            GetPods::Pods { all_namespaces, .. } => *all_namespaces,
+            GetResources::Pods { all_namespaces, .. } => *all_namespaces,
+            GetResources::Nodes { .. } => false,
         }
     }
 }

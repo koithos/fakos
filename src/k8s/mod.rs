@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use k8s_openapi::api::core::v1::Pod;
+use k8s_openapi::api::core::v1::{Node, Pod};
 use kube::api::ListParams;
 use kube::{Api, Client};
 use thiserror::Error;
@@ -18,6 +18,17 @@ pub struct FarosPod {
     pub labels: std::collections::BTreeMap<String, String>,
     /// Annotations attached to the pod
     pub annotations: std::collections::BTreeMap<String, String>,
+}
+
+/// Represents a Kubernetes node
+#[derive(Debug, Clone)]
+pub struct FarosNode {
+    /// Name of the node
+    pub name: String,
+    /// Labels attached to the node
+    pub labels: std::collections::BTreeMap<String, String>,
+    /// Status of the node (Ready, NotReady, etc.)
+    pub status: String,
 }
 
 /// Errors that can occur when interacting with Kubernetes
@@ -150,6 +161,74 @@ impl K8sClient {
             .collect();
 
         Ok(pods)
+    }
+
+    /// Get nodes that match the specified filters
+    ///
+    /// # Arguments
+    ///
+    /// * `node_name` - Optional filter by node name
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Vec<FarosNode>>` - A list of nodes matching the filters
+    #[instrument(skip(self), level = "debug")]
+    pub async fn get_nodes(&self, node_name: Option<&str>) -> Result<Vec<FarosNode>> {
+        let api: Api<Node> = Api::all(self.client.clone());
+        let list_params = ListParams::default();
+
+        let node_list = api
+            .list(&list_params)
+            .await
+            .context("Failed to list nodes from Kubernetes API")?;
+
+        let nodes: Vec<FarosNode> = node_list
+            .items
+            .into_iter()
+            .filter_map(|node: Node| {
+                // Filter by node name if specified
+                if let Some(name) = node_name
+                    && node.metadata.name.as_deref() != Some(name)
+                {
+                    return None;
+                }
+
+                // Extract node name
+                let name = node
+                    .metadata
+                    .name
+                    .as_deref()
+                    .unwrap_or_default()
+                    .to_string();
+
+                // Extract labels
+                let labels = node.metadata.labels.unwrap_or_default();
+
+                // Extract status
+                let status = node
+                    .status
+                    .as_ref()
+                    .and_then(|s| s.conditions.as_ref())
+                    .and_then(|conditions| {
+                        conditions.iter().find(|c| c.type_ == "Ready").map(|c| {
+                            if c.status == "True" {
+                                "Ready".to_string()
+                            } else {
+                                "NotReady".to_string()
+                            }
+                        })
+                    })
+                    .unwrap_or_else(|| "Unknown".to_string());
+
+                Some(FarosNode {
+                    name,
+                    labels,
+                    status,
+                })
+            })
+            .collect();
+
+        Ok(nodes)
     }
 
     /// Check if the Kubernetes cluster is accessible

@@ -1,4 +1,7 @@
-use crate::{OutputFormat, k8s::FarosPod};
+use crate::{
+    OutputFormat,
+    k8s::{FarosNode, FarosPod},
+};
 use anyhow::Result;
 use prettytable::{Cell, Row, Table, format::FormatBuilder};
 use tracing::warn;
@@ -139,4 +142,55 @@ fn format_metadata(map: &std::collections::BTreeMap<String, String>) -> String {
             acc
         })
     }
+}
+
+/// Display nodes in a formatted table
+///
+/// # Arguments
+///
+/// * `nodes` - List of nodes to display
+/// * `output_format` - Format to use for displaying the nodes
+/// * `show_labels` - Whether to include labels in the output
+///
+/// # Returns
+///
+/// * `Result<()>` - Success or error
+pub fn display_nodes(
+    nodes: &[FarosNode],
+    _output_format: &OutputFormat,
+    show_labels: bool,
+) -> Result<(), TableDisplayError> {
+    if nodes.is_empty() {
+        warn!("No nodes found matching criteria");
+        return Ok(());
+    }
+
+    let mut table = create_table()?;
+    let mut header_cells = Vec::new();
+
+    header_cells.push(Cell::new("NAME"));
+    header_cells.push(Cell::new("STATUS"));
+
+    if show_labels {
+        header_cells.push(Cell::new("LABELS"));
+    }
+
+    let header_row = Row::new(header_cells);
+    table.add_row(header_row);
+
+    for node in nodes {
+        let mut row_cells = Vec::new();
+
+        row_cells.push(Cell::new(&node.name));
+        row_cells.push(Cell::new(&node.status));
+
+        if show_labels {
+            row_cells.push(Cell::new(&format_metadata(&node.labels)));
+        }
+
+        table.add_row(Row::new(row_cells));
+    }
+
+    table.printstd();
+    Ok(())
 }
