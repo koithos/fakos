@@ -6,8 +6,8 @@ spec:
   version: {{ .TagName }}
   shortDescription: Quickly access the state and metadata of k8s resources
   description: |
-    fakos is a kubernetes CLI tool that provides comprehensive visibility into the
-    state and metadata of all k8s resources; pods, nodes, daemonsets etc.
+    fakos allows users to fetch state and metadata of different k8s resources
+    (pods, nodes, daemonsets etc.) in a cleaner way than describing them.
   homepage: https://github.com/koithos/fakos
   platforms:
     - selector:
