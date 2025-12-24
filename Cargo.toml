@@ -21,6 +21,7 @@ prettytable-rs = "0.10"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["json", "env-filter", "chrono", "ansi"] }
 thiserror = "2.0"
+rustls = { version = "0.23", default-features = false, features = ["ring"] }
 
 [dev-dependencies]
 tokio-test = "0.4"
@@ -32,3 +33,4 @@ lto = true             # link-time optimization
 codegen-units = 1      # better optimization across crate boundaries
 panic = "abort"        # removes unwinding machinery
 strip = true
+debug = false

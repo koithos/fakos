@@ -18,6 +18,9 @@ pub struct FarosPod {
     pub labels: std::collections::BTreeMap<String, String>,
     /// Annotations attached to the pod
     pub annotations: std::collections::BTreeMap<String, String>,
+    /// Environment variables for each container (Container Name -> (Env Var Name -> Env Var Value))
+    pub container_env_vars:
+        std::collections::BTreeMap<String, std::collections::BTreeMap<String, String>>,
 }
 
 /// Represents a Kubernetes node
@@ -131,7 +134,8 @@ impl K8sClient {
                 }
 
                 // Extract pod name
-                let name = pod.metadata.name.as_deref().unwrap_or_default().to_string();
+                let pod_name_str = pod.metadata.name.as_deref().unwrap_or_default().to_string();
+                let name = pod_name_str.clone();
 
                 // Extract namespace
                 let pod_namespace = pod
@@ -142,15 +146,82 @@ impl K8sClient {
                     .to_string();
 
                 // Extract node name
-                let node = pod
+                let pod_node_name = pod
                     .spec
                     .as_ref()
                     .and_then(|spec| spec.node_name.as_ref())
                     .cloned();
+                let node = pod_node_name.clone();
 
                 // Extract labels
                 let labels = pod.metadata.labels.unwrap_or_default();
                 let annotations = pod.metadata.annotations.unwrap_or_default();
+
+                // Extract environment variables
+                let mut container_env_vars = std::collections::BTreeMap::new();
+                if let Some(spec) = &pod.spec {
+                    for container in &spec.containers {
+                        let mut env_vars = std::collections::BTreeMap::new();
+                        if let Some(env) = &container.env {
+                            for var in env {
+                                let name = var.name.clone();
+                                let value = if let Some(val) = &var.value {
+                                    val.clone()
+                                } else if let Some(val_from) = &var.value_from {
+                                    if let Some(field_ref) = &val_from.field_ref {
+                                        // Attempt to resolve fieldRef from pod data
+                                        match field_ref.field_path.as_str() {
+                                            "metadata.name" => pod_name_str.clone(),
+                                            "metadata.namespace" => pod_namespace.clone(),
+                                            "metadata.uid" => {
+                                                pod.metadata.uid.clone().unwrap_or_default()
+                                            }
+                                            "spec.nodeName" => {
+                                                pod_node_name.clone().unwrap_or_default()
+                                            }
+                                            "spec.serviceAccountName" => pod
+                                                .spec
+                                                .as_ref()
+                                                .and_then(|s| s.service_account_name.clone())
+                                                .unwrap_or_default(),
+                                            "status.hostIP" => pod
+                                                .status
+                                                .as_ref()
+                                                .and_then(|s| s.host_ip.clone())
+                                                .unwrap_or_default(),
+                                            "status.podIP" => pod
+                                                .status
+                                                .as_ref()
+                                                .and_then(|s| s.pod_ip.clone())
+                                                .unwrap_or_default(),
+                                            _ => format!("fieldRef[{}]", field_ref.field_path),
+                                        }
+                                    } else if let Some(secret_ref) = &val_from.secret_key_ref {
+                                        format!(
+                                            "secret[{}:{}]",
+                                            secret_ref.name.clone(),
+                                            secret_ref.key
+                                        )
+                                    } else if let Some(cm_ref) = &val_from.config_map_key_ref {
+                                        format!("configmap[{}:{}]", cm_ref.name.clone(), cm_ref.key)
+                                    } else if let Some(res_ref) = &val_from.resource_field_ref {
+                                        format!(
+                                            "resource[{}:{}]",
+                                            res_ref.resource,
+                                            res_ref.container_name.clone().unwrap_or_default()
+                                        )
+                                    } else {
+                                        "<value-from>".to_string()
+                                    }
+                                } else {
+                                    "".to_string()
+                                };
+                                env_vars.insert(name, value);
+                            }
+                        }
+                        container_env_vars.insert(container.name.clone(), env_vars);
+                    }
+                }
 
                 Some(FarosPod {
                     name,
@@ -158,6 +229,7 @@ impl K8sClient {
                     node,
                     labels,
                     annotations,
+                    container_env_vars,
                 })
             })
             .collect();
