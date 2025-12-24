@@ -10,6 +10,10 @@ use tracing::{debug, info, instrument, warn};
 async fn main() -> FakosResult<()> {
     let args = Args::parse();
 
+    // Initialize rustls crypto provider
+    // Ignore error if already installed (e.g. by other dependencies)
+    let _ = rustls::crypto::ring::default_provider().install_default();
+
     // Initialize logging with the specified format
     logging::init_logging(logging::configure_logging(args.verbose), args.log_format)
         .context("Failed to initialize logging")?;
@@ -42,6 +46,7 @@ async fn process_commands(args: Args, client: K8sClient) -> FakosResult<()> {
                 output,
                 labels,
                 annotations,
+                env_vars,
                 ..
             } => {
                 if let Some(ref pod) = pod_name
@@ -74,7 +79,14 @@ async fn process_commands(args: Args, client: K8sClient) -> FakosResult<()> {
                     .await
                     .context("Failed to get pods")?;
 
-                display_pods(&pods, &output, labels, annotations, all_namespaces)?;
+                display_pods(
+                    &pods,
+                    &output,
+                    labels,
+                    annotations,
+                    all_namespaces,
+                    env_vars,
+                )?;
             }
             GetResources::Nodes {
                 node_name,

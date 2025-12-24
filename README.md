@@ -49,7 +49,7 @@ Clone the repository and build from source:
 ```bash
 git clone https://github.com/koithos/fakos.git
 cd fakos
-cargo build --release
+cargo build --jobs $(sysctl -n hw.logicalcpu) --release
 # The binary will be available at target/release/fakos
 ```
 

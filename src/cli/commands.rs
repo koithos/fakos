@@ -51,6 +51,10 @@ pub enum GetResources {
         #[arg(long = "annotations")]
         annotations: bool,
 
+        /// Display environment variables for each container in the pods
+        #[arg(long = "env-vars")]
+        env_vars: bool,
+
         /// Path to kubeconfig file (default: ~/.kube/config)
         #[arg(long = "kubeconfig")]
         kubeconfig: Option<PathBuf>,

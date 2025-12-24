@@ -50,6 +50,7 @@ pub fn display_pods(
     show_labels: bool,
     show_annotations: bool,
     all_namespaces: bool,
+    show_env_vars: bool,
 ) -> Result<(), TableDisplayError> {
     if pods.is_empty() {
         warn!("No pods found matching criteria");
@@ -63,6 +64,11 @@ pub fn display_pods(
         header_cells.push(Cell::new("NAMESPACE"));
     }
     header_cells.push(Cell::new("POD"));
+
+    if show_env_vars {
+        header_cells.push(Cell::new("CONTAINERS"));
+        header_cells.push(Cell::new("ENV VARS"));
+    }
 
     if show_labels {
         header_cells.push(Cell::new("LABELS"));
@@ -86,6 +92,12 @@ pub fn display_pods(
             row_cells.push(Cell::new(&pod.namespace));
         }
         row_cells.push(Cell::new(&pod.name));
+
+        if show_env_vars {
+            let (containers, env_vars) = format_container_and_env_vars(&pod.container_env_vars);
+            row_cells.push(Cell::new(&containers));
+            row_cells.push(Cell::new(&env_vars));
+        }
 
         if show_labels {
             row_cells.push(Cell::new(&format_metadata(&pod.labels)));
@@ -142,6 +154,58 @@ fn format_metadata(map: &std::collections::BTreeMap<String, String>) -> String {
             acc
         })
     }
+}
+
+fn format_container_and_env_vars(
+    container_env_vars: &std::collections::BTreeMap<
+        String,
+        std::collections::BTreeMap<String, String>,
+    >,
+) -> (String, String) {
+    if container_env_vars.is_empty() {
+        return ("<none>".to_string(), "<none>".to_string());
+    }
+
+    let mut containers_str = String::new();
+    let mut env_vars_str = String::new();
+    let mut first = true;
+
+    for (container_name, env_vars) in container_env_vars {
+        if !first {
+            containers_str.push('\n');
+            env_vars_str.push('\n');
+        }
+        first = false;
+
+        // Add container name
+        containers_str.push_str(container_name);
+
+        if env_vars.is_empty() {
+            env_vars_str.push_str("<none>");
+        } else {
+            // Add env vars
+            let mut env_first = true;
+            for (key, value) in env_vars {
+                if !env_first {
+                    // For subsequent env vars, we need to add newlines to the container string to keep alignment
+                    containers_str.push('\n');
+                    env_vars_str.push('\n');
+                }
+                env_first = false;
+
+                let entry = format!("{}={}", key, value);
+                env_vars_str.push_str(&entry);
+
+                // Add padding to container string for each newline in the environment variable value
+                // This ensures that the next environment variable or container starts at the correct vertical position
+                let newline_count = entry.chars().filter(|&c| c == '\n').count();
+                for _ in 0..newline_count {
+                    containers_str.push('\n');
+                }
+            }
+        }
+    }
+    (containers_str, env_vars_str)
 }
 
 /// Display nodes in a formatted table
