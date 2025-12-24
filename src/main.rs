@@ -85,7 +85,7 @@ async fn process_commands(args: Args, client: K8sClient) -> FakosResult<()> {
                     labels,
                     annotations,
                     all_namespaces,
-                    env_vars,
+                    env_vars.as_ref(),
                 )?;
             }
             GetResources::Nodes {

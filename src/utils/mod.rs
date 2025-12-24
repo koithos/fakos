@@ -4,9 +4,43 @@ use crate::{
 };
 use anyhow::Result;
 use prettytable::{Cell, Row, Table, format::FormatBuilder};
+use regex::Regex;
 use tracing::warn;
 
 pub mod logging;
+
+/// Filter configuration for environment variables
+#[derive(Debug, Clone)]
+pub struct EnvVarsFilter {
+    pub regex: Regex,
+    pub invert: bool,
+}
+
+impl EnvVarsFilter {
+    pub fn new(regex: Regex, invert: bool) -> Self {
+        Self { regex, invert }
+    }
+
+    pub fn matches(&self, text: &str) -> bool {
+        let matches = self.regex.is_match(text);
+        if self.invert { !matches } else { matches }
+    }
+}
+
+impl std::str::FromStr for EnvVarsFilter {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (pattern, invert) = if let Some(stripped) = s.strip_prefix('!') {
+            (stripped, true)
+        } else {
+            (s, false)
+        };
+
+        let regex = Regex::new(pattern).map_err(|e| e.to_string())?;
+        Ok(Self::new(regex, invert))
+    }
+}
 
 /// Error type for table display operations
 #[derive(Debug)]
@@ -50,7 +84,7 @@ pub fn display_pods(
     show_labels: bool,
     show_annotations: bool,
     all_namespaces: bool,
-    show_env_vars: bool,
+    env_vars_filter: Option<&EnvVarsFilter>,
 ) -> Result<(), TableDisplayError> {
     if pods.is_empty() {
         warn!("No pods found matching criteria");
@@ -65,7 +99,7 @@ pub fn display_pods(
     }
     header_cells.push(Cell::new("POD"));
 
-    if show_env_vars {
+    if env_vars_filter.is_some() {
         header_cells.push(Cell::new("CONTAINERS"));
         header_cells.push(Cell::new("ENV VARS"));
     }
@@ -93,8 +127,9 @@ pub fn display_pods(
         }
         row_cells.push(Cell::new(&pod.name));
 
-        if show_env_vars {
-            let (containers, env_vars) = format_container_and_env_vars(&pod.container_env_vars);
+        if let Some(filter) = env_vars_filter {
+            let (containers, env_vars) =
+                format_container_and_env_vars(&pod.container_env_vars, filter);
             row_cells.push(Cell::new(&containers));
             row_cells.push(Cell::new(&env_vars));
         }
@@ -161,6 +196,7 @@ fn format_container_and_env_vars(
         String,
         std::collections::BTreeMap<String, String>,
     >,
+    filter: &EnvVarsFilter,
 ) -> (String, String) {
     if container_env_vars.is_empty() {
         return ("<none>".to_string(), "<none>".to_string());
@@ -171,6 +207,11 @@ fn format_container_and_env_vars(
     let mut first = true;
 
     for (container_name, env_vars) in container_env_vars {
+        // Apply filter to container name
+        if !filter.matches(container_name) {
+            continue;
+        }
+
         if !first {
             containers_str.push('\n');
             env_vars_str.push('\n');

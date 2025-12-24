@@ -52,8 +52,9 @@ pub enum GetResources {
         annotations: bool,
 
         /// Display environment variables for each container in the pods
-        #[arg(long = "env-vars")]
-        env_vars: bool,
+        /// Optionally accepts a regex pattern to filter containers (e.g. --env-vars ".*-app")
+        #[arg(long = "env-vars", num_args(0..=1), default_missing_value = ".*")]
+        env_vars: Option<crate::EnvVarsFilter>,
 
         /// Path to kubeconfig file (default: ~/.kube/config)
         #[arg(long = "kubeconfig")]
