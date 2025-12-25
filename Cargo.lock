@@ -368,6 +368,7 @@ dependencies = [
  "kube",
  "mockall",
  "prettytable-rs",
+ "regex",
  "rustls",
  "thiserror 2.0.17",
  "tokio",

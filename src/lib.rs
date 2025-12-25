@@ -16,7 +16,7 @@ mod utils;
 pub use cli::{Commands, GetResources, LogFormat, OutputFormat};
 pub use k8s::{FarosNode, FarosPod, K8sError};
 pub use utils::logging;
-pub use utils::{display_nodes, display_pods};
+pub use utils::{EnvVarsFilter, display_nodes, display_pods};
 
 /// Result type for fakos operations
 pub type FakosResult<T> = anyhow::Result<T>;

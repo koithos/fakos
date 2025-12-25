@@ -22,6 +22,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["json", "env-filter", "chrono", "ansi"] }
 thiserror = "2.0"
 rustls = { version = "0.23", default-features = false, features = ["ring"] }
+regex = "1.12"
 
 [dev-dependencies]
 tokio-test = "0.4"
