@@ -12,7 +12,7 @@ rust-version = "1.90"
 
 [dependencies]
 clap = { version = "4.5", default-features = false, features = ["std", "derive", "help", "usage", "error-context", "color"] }
-k8s-openapi = { version = "0.26", default-features = false, features = ["v1_32"] }
+k8s-openapi = { version = "0.28", default-features = false, features = ["v1_32"] }
 kube = { version = "2.0", default-features = false, features = ["client", "rustls-tls"] }
 tokio = { version = "1.48", default-features = false, features = ["rt-multi-thread", "macros", "net", "io-util", "time"] }
 anyhow = "1.0"
@@ -26,7 +26,7 @@ regex = "1.12"
 
 [dev-dependencies]
 tokio-test = "0.4"
-mockall = "0.14"
+mockall = "0.15"
 
 [profile.release]
 opt-level = "s"        # or "s" (slightly faster, slightly larger)
